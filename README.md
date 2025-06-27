@@ -166,8 +166,8 @@ erDiagram
     BLOG_POSTS_RAW_STREAM {
         VARIANT xml "変更されたXMLデータ"
         TIMESTAMP_NTZ fetched_at "取得日時"
-        VARIANT METADATA$ACTION "変更アクション"
-        BOOLEAN METADATA$ISUPDATE "更新フラグ"
+        VARIANT METADATA_ACTION "変更アクション"
+        BOOLEAN METADATA_ISUPDATE "更新フラグ"
     }
 
     BLOG_POSTS_RAW ||--o{ BLOG_POSTS_RAW_STREAM : "変更を追跡"
