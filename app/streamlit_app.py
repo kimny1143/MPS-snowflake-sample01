@@ -5,19 +5,22 @@ Simple vector search interface for blog posts
 
 import pandas as pd
 import streamlit as st
-
 from snowflake.snowpark import Session
+
 from src.config import get_session
 
+# ページ設定
 st.set_page_config(page_title="MUED ブログ検索", page_icon="🔍", layout="wide")
 
 
+# セッションの初期化
 @st.cache_resource
 def init_snowflake_session() -> Session:
     """Initialize and cache Snowflake session"""
     return get_session()
 
 
+# 類似記事検索
 def search_similar_posts(session: Session, query: str, limit: int = 5) -> pd.DataFrame:
     """
     Search for similar blog posts
@@ -107,6 +110,7 @@ def search_similar_posts(session: Session, query: str, limit: int = 5) -> pd.Dat
         return pd.DataFrame()
 
 
+# 検索結果の表示
 def format_result_card(row: pd.Series) -> None:
     """Format and display a single search result"""
     with st.container():
@@ -132,6 +136,7 @@ def format_result_card(row: pd.Series) -> None:
         st.divider()
 
 
+# メイン関数
 def main():
     """Main Streamlit app"""
     st.title("🔍 MUED ブログ検索")

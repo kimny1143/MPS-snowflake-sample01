@@ -13,15 +13,15 @@ from typing import Any
 
 import requests
 from dotenv import load_dotenv
-
 from snowflake.snowpark import Session
 from snowflake.snowpark.exceptions import SnowparkSQLException
+
 from src.config import get_snowflake_session
 
 # Load environment variables
 load_dotenv()
 
-# Constants
+# 定数
 RSS_FEED_URL = os.getenv(
     "RSS_FEED_URL", "https://note.com/api/v2/creators/mued/contents?kind=note&page=1"
 )
@@ -29,6 +29,7 @@ STAGE_NAME = "@RSS_STAGE"
 TABLE_NAME = "BLOG_POSTS_RAW"
 
 
+# RSS フィードを取得
 def fetch_raw_rss(url: str) -> str:
     """
     Fetch raw RSS/XML content from the specified URL.
@@ -47,6 +48,7 @@ def fetch_raw_rss(url: str) -> str:
         raise Exception(f"Failed to fetch RSS feed: {str(e)}")
 
 
+# ステージにアップロード
 def upload_to_stage(
     session: Session, xml_content: str, stage_name: str
 ) -> dict[str, Any]:
@@ -102,6 +104,7 @@ def upload_to_stage(
         return {"status": "error", "error": str(e), "timestamp": timestamp}
 
 
+# テーブルにロード
 def load_to_table(session: Session, stage_path: str, table_name: str) -> dict[str, Any]:
     """
     Load XML data from stage to BLOG_POSTS_RAW table.
@@ -165,6 +168,7 @@ def load_to_table(session: Session, stage_path: str, table_name: str) -> dict[st
         }
 
 
+# メイン関数
 def ingest_rss_feed() -> dict[str, Any]:
     """
     Main function to ingest RSS feed into Snowflake.

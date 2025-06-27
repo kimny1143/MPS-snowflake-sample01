@@ -1,5 +1,5 @@
 """
-Pydantic models for API responses
+APIレスポンス用Pydanticモデル
 """
 
 from datetime import datetime
@@ -9,13 +9,13 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ArticleRecommendation(BaseModel):
-    """Single article recommendation"""
+    """単一の記事推薦"""
 
-    article_id: str = Field(..., description="Unique article identifier")
-    score: float = Field(..., ge=0.0, le=1.0, description="Similarity score (0-1)")
-    title: Optional[str] = Field(None, description="Article title")
-    summary: Optional[str] = Field(None, description="Article summary")
-    url: Optional[str] = Field(None, description="Article URL")
+    article_id: str = Field(..., description="ユニークな記事ID")
+    score: float = Field(..., ge=0.0, le=1.0, description="類似度スコア (0-1)")
+    title: Optional[str] = Field(None, description="記事タイトル")
+    summary: Optional[str] = Field(None, description="記事の要約")
+    url: Optional[str] = Field(None, description="記事URL")
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -31,24 +31,22 @@ class ArticleRecommendation(BaseModel):
 
 
 class RecommendationRequest(BaseModel):
-    """Request model for recommendations"""
+    """推薦リクエストモデル"""
 
-    student_id: str = Field(..., description="Student identifier")
-    query: Optional[str] = Field(None, description="Optional search query")
-    limit: int = Field(5, ge=1, le=20, description="Number of recommendations")
+    student_id: str = Field(..., description="学生ID")
+    query: Optional[str] = Field(None, description="オプションの検索クエリ")
+    limit: int = Field(5, ge=1, le=20, description="推薦数")
 
 
 class RecommendationResponse(BaseModel):
-    """Response model for recommendations"""
+    """推薦レスポンスモデル"""
 
-    student_id: str = Field(..., description="Student identifier")
-    recommendations: list[ArticleRecommendation] = Field(
-        ..., description="List of recommended articles"
-    )
-    total_count: int = Field(..., description="Total number of recommendations")
+    student_id: str = Field(..., description="学生ID")
+    recommendations: list[ArticleRecommendation] = Field(..., description="推薦記事のリスト")
+    total_count: int = Field(..., description="推薦総数")
     generated_at: datetime = Field(
         default_factory=datetime.now,
-        description="Timestamp when recommendations were generated",
+        description="推薦生成日時",
     )
 
     model_config = ConfigDict(
@@ -72,8 +70,8 @@ class RecommendationResponse(BaseModel):
 
 
 class HealthResponse(BaseModel):
-    """Health check response"""
+    """ヘルスチェックレスポンス"""
 
-    status: str = Field("healthy", description="Service status")
-    database_connected: bool = Field(..., description="Database connection status")
-    version: str = Field("1.0.0", description="API version")
+    status: str = Field("healthy", description="サービス状態")
+    database_connected: bool = Field(..., description="データベース接続状態")
+    version: str = Field("1.0.0", description="APIバージョン")

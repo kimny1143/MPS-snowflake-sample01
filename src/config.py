@@ -1,10 +1,10 @@
 import os
 
 from dotenv import load_dotenv
-
 from snowflake.snowpark import Session
 
 
+# セッションの初期化
 def get_session() -> Session:
     load_dotenv()
 

@@ -1,6 +1,6 @@
 """
-FastAPI application for MUED Snowflake AI App
-Provides REST API for article recommendations
+MUED Snowflake AI App 用 FastAPI アプリケーション
+記事推薦のためのREST APIを提供
 """
 
 from contextlib import asynccontextmanager
@@ -9,20 +9,20 @@ from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from snowflake.snowpark import Session
 
 from api.models import ArticleRecommendation, HealthResponse, RecommendationResponse
-from snowflake.snowpark import Session
 from src.config import get_snowflake_session
 
-# Global session variable
+# グローバルセッション変数
 snowflake_session: Optional[Session] = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage application lifecycle"""
+    """アプリケーションのライフサイクルを管理"""
     global snowflake_session
-    # Startup
+    # 起動時の処理
     try:
         snowflake_session = get_snowflake_session()
         print(" Connected to Snowflake")
@@ -32,21 +32,21 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # Shutdown
+    # 終了時の処理
     if snowflake_session:
         snowflake_session.close()
         print(" Closed Snowflake connection")
 
 
-# Create FastAPI app
+# FastAPIアプリケーションの作成
 app = FastAPI(
     title="MUED Snowflake AI App API",
-    description="REST API for blog post recommendations using Snowflake Cortex",
+    description="Snowflake Cortexを使用したブログ記事推薦のREST API",
     version="1.0.0",
     lifespan=lifespan,
 )
 
-# Add CORS middleware
+# CORSミドルウェアの追加
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -58,14 +58,14 @@ app.add_middleware(
 
 def get_random_recommendations(session: Session, limit: int = 5) -> list[dict]:
     """
-    Get random recommendations when no specific query is provided
+    特定のクエリがない場合にランダムな推薦を取得
 
     Args:
-        session: Snowflake session
-        limit: Number of recommendations
+        session: Snowflakeセッション
+        limit: 推薦数
 
     Returns:
-        List of recommendation dictionaries
+        推薦辞書のリスト
     """
     sql = f"""
     SELECT
@@ -84,35 +84,33 @@ def get_random_recommendations(session: Session, limit: int = 5) -> list[dict]:
         results = session.sql(sql).to_pandas()
         return results.to_dict("records")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"データベースエラー: {str(e)}")
 
 
-# Configuration for Cortex availability
-USE_CORTEX = (
-    False  # TODO: Set to True when Cortex is available in your Snowflake account
-)
+# Cortexの利用可能性の設定
+USE_CORTEX = False  # TODO: SnowflakeアカウントでCortexが利用可能になったらTrueに設定
 
 
 def get_similar_recommendations(
     session: Session, query: str, limit: int = 5
 ) -> list[dict]:
     """
-    Get recommendations based on similarity
+    類似度に基づいて推薦を取得
 
     Args:
-        session: Snowflake session
-        query: Search query
-        limit: Number of recommendations
+        session: Snowflakeセッション
+        query: 検索クエリ
+        limit: 推薦数
 
     Returns:
-        List of recommendation dictionaries
+        推薦辞書のリスト
     """
     try:
         safe_query = query.replace("'", "''")
 
         if USE_CORTEX:
-            # ========== CORTEX VERSION (Vector Search) ==========
-            # Generate embedding for the query
+            # ========== CORTEXバージョン（ベクトル検索） ==========
+            # クエリの埋め込みを生成
             query_embedding_sql = f"""
             SELECT SNOWFLAKE.CORTEX.EMBED_TEXT_768(
                 'e5-base-v2',
@@ -120,7 +118,7 @@ def get_similar_recommendations(
             ) as query_emb
             """
 
-            # Search for similar posts using vector similarity
+            # ベクトル類似度を使用して類似記事を検索
             search_sql = f"""
             WITH query_vector AS (
                 {query_embedding_sql}
@@ -138,8 +136,8 @@ def get_similar_recommendations(
             LIMIT {limit}
             """
         else:
-            # ========== CURRENT VERSION (Text Search) ==========
-            # Text-based search as fallback
+            # ========== 現在のバージョン（テキスト検索） ==========
+            # フォールバックとしてのテキストベース検索
             search_sql = f"""
             SELECT
                 id as article_id,
@@ -168,7 +166,7 @@ def get_similar_recommendations(
 
         results = session.sql(search_sql).to_pandas()
 
-        # Convert to dict and ensure score is float
+        # 辞書に変換し、スコアがfloatであることを保証
         recommendations = []
         for _, row in results.iterrows():
             rec = row.to_dict()
@@ -178,12 +176,12 @@ def get_similar_recommendations(
         return recommendations
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"検索エラー: {str(e)}")
 
 
 @app.get("/", tags=["Root"])
 async def root():
-    """Root endpoint"""
+    """ルートエンドポイント"""
     return {
         "message": "MUED Snowflake AI App API",
         "version": "1.0.0",
@@ -197,9 +195,9 @@ async def root():
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
-    """Check API and database health"""
+    """APIとデータベースのヘルスチェック"""
     try:
-        # Test database connection
+        # データベース接続のテスト
         if snowflake_session:
             result = snowflake_session.sql("SELECT 1").collect()
             db_connected = len(result) > 0
@@ -218,25 +216,25 @@ async def health_check():
 
 @app.get("/recommend", response_model=RecommendationResponse, tags=["Recommendations"])
 async def get_recommendations(
-    student_id: str = Query(..., description="Student identifier"),
-    query: Optional[str] = Query(None, description="Optional search query"),
-    limit: int = Query(5, ge=1, le=20, description="Number of recommendations"),
+    student_id: str = Query(..., description="学生ID"),
+    query: Optional[str] = Query(None, description="オプションの検索クエリ"),
+    limit: int = Query(5, ge=1, le=20, description="推薦数"),
 ):
     """
-    Get article recommendations for a student
+    学生向けの記事推薦を取得
 
-    - **student_id**: Required student identifier
-    - **query**: Optional search query for semantic search
-    - **limit**: Number of recommendations (1-20, default: 5)
+    - **student_id**: 必須の学生ID
+    - **query**: セマンティック検索用のオプションクエリ
+    - **limit**: 推薦数 (1-20、デフォルト: 5)
 
-    If no query is provided, returns random recommendations.
-    If query is provided, returns semantically similar articles.
+    クエリがない場合はランダムな推薦を返します。
+    クエリがある場合は意味的に類似した記事を返します。
     """
     if not snowflake_session:
-        raise HTTPException(status_code=503, detail="Database connection not available")
+        raise HTTPException(status_code=503, detail="データベース接続が利用できません")
 
     try:
-        # Get recommendations based on whether query is provided
+        # クエリの有無に基づいて推薦を取得
         if query:
             recommendations_data = get_similar_recommendations(
                 snowflake_session, query, limit
@@ -244,7 +242,7 @@ async def get_recommendations(
         else:
             recommendations_data = get_random_recommendations(snowflake_session, limit)
 
-        # Convert to Pydantic models
+        # Pydanticモデルに変換
         recommendations = [ArticleRecommendation(**rec) for rec in recommendations_data]
 
         return RecommendationResponse(
@@ -257,9 +255,7 @@ async def get_recommendations(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to generate recommendations: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"推薦の生成に失敗しました: {str(e)}")
 
 
 if __name__ == "__main__":

@@ -4,12 +4,12 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-
 from snowflake.snowpark import Session
 
 from .fetch_rss import fetch
 
 
+# ステージにアップロード
 def upload_to_stage(
     session: Session, data: list, stage_name: str = "RAW.RSS_STAGE"
 ) -> str:
@@ -35,6 +35,7 @@ def upload_to_stage(
         Path(temp_path).unlink(missing_ok=True)
 
 
+# RSS フィードを RAW レイヤーにロード
 def load_rss_to_raw(session: Session, feed_url: str) -> dict:
     """Load RSS feed to RAW layer with transaction control"""
     try:
@@ -82,6 +83,7 @@ def load_rss_to_raw(session: Session, feed_url: str) -> dict:
         }
 
 
+# マージを実行
 def execute_merge(session: Session) -> dict:
     """Execute merge from STG to CORE layer"""
     try:
@@ -99,6 +101,7 @@ def execute_merge(session: Session) -> dict:
         }
 
 
+# タスクを有効化
 def enable_task(
     session: Session, task_name: str = "CORE.MERGE_BLOG_POSTS_TASK"
 ) -> dict:
@@ -120,6 +123,7 @@ def enable_task(
         }
 
 
+# タスクの状態を取得
 def get_task_status(session: Session) -> pd.DataFrame:
     """Get status of all tasks"""
     return session.sql(

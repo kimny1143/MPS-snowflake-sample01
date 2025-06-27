@@ -4,16 +4,21 @@ from .config import get_session
 from .loader import enable_task, execute_merge, get_task_status, load_rss_to_raw
 
 
+# メイン関数
 def main():
+    # 引数の確認
     if len(sys.argv) < 2:
         print("Usage: python -m src.main <RSS_URL>")
         sys.exit(1)
 
+    # 引数の取得
     feed_url = sys.argv[1]
 
+    # セッションの確立
     print("Establishing Snowflake session...")
     session = get_session()
 
+    # 処理の実行
     try:
         print(f"Loading RSS feed from {feed_url} to RAW layer...")
         load_result = load_rss_to_raw(session, feed_url)
