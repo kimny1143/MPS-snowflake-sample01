@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from snowflake.snowpark import Session
 
 
-def get_snowflake_session() -> Session:
+def get_session() -> Session:
     load_dotenv()
 
     connection_params = {

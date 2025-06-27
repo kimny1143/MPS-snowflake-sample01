@@ -7,7 +7,7 @@ import pandas as pd
 import streamlit as st
 
 from snowflake.snowpark import Session
-from src.config import get_snowflake_session
+from src.config import get_session
 
 st.set_page_config(page_title="MUED ブログ検索", page_icon="🔍", layout="wide")
 
@@ -15,7 +15,7 @@ st.set_page_config(page_title="MUED ブログ検索", page_icon="🔍", layout="
 @st.cache_resource
 def init_snowflake_session() -> Session:
     """Initialize and cache Snowflake session"""
-    return get_snowflake_session()
+    return get_session()
 
 
 def search_similar_posts(session: Session, query: str, limit: int = 5) -> pd.DataFrame:
