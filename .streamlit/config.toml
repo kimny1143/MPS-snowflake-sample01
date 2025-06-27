@@ -1,0 +1,21 @@
+[browser]
+# ブラウザ自動起動を無効化（エラー回避）
+serverAddress = "localhost"
+gatherUsageStats = false
+
+[server]
+# Headlessモードで起動（ブラウザ自動起動を無効化）
+headless = true
+# ポート設定
+port = 8501
+# ファイル監視設定
+runOnSave = true
+
+[ui]
+# UI設定
+hideTopBar = false
+hideSidebarNav = false
+
+[theme]
+# ダークテーマ設定（オプション）
+base = "light"

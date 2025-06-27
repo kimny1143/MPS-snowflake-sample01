@@ -1,93 +1,71 @@
-.PHONY: help bootstrap setup-db install ingest merge enable-task status ui clean test lint
+.PHONY: help init bootstrap setup-db install ingest transform status streamlit api clean test lint
 
 # Default RSS feed URL
 RSS_URL ?= https://note.com/mued_glasswerks/rss
 
 help:
-	@echo "Available commands:"
-	@echo "  make bootstrap    - Complete setup (install deps + create Snowflake objects)"
-	@echo "  make ingest      - Fetch RSS and load to Snowflake, then start task scheduler"
-	@echo "  make ui          - Start Streamlit UI (coming soon)"
-	@echo "  make status      - Show task and data status"
-	@echo "  make clean       - Clean up temporary files"
+	@echo "MUED Snowflake AI App - Available commands:"
+	@echo ""
+	@echo "🚀 Setup:"
+	@echo "  make init        - Initialize project (first time setup)"
+	@echo "  make install     - Install Python dependencies"
+	@echo "  make setup-db    - Show database setup instructions"
+	@echo ""
+	@echo "📊 Data Operations:"
+	@echo "  make ingest      - Fetch RSS and load to Snowflake"
+	@echo "  make transform   - Info about transformation (runs automatically)"
+	@echo "  make status      - Show database status"
+	@echo ""
+	@echo "🖥️  Applications:"
+	@echo "  make streamlit   - Start Streamlit UI (search interface)"
+	@echo "  make api         - Start FastAPI server"
+	@echo ""
+	@echo "🧪 Development:"
 	@echo "  make test        - Run tests"
-	@echo "  make lint        - Run linters"
+	@echo "  make lint        - Run code formatters"
+	@echo "  make clean       - Clean temporary files"
 
-bootstrap: install setup-db
+bootstrap: init setup-db
 	@echo "✓ Bootstrap complete! Environment is ready."
+	@echo "Next: Run 'make ingest' to load initial data"
 
 install:
 	@echo "Installing Python dependencies..."
-	pip install -r requirements.txt
+	@poetry install
 	@echo "✓ Dependencies installed"
 
 setup-db:
 	@echo "Setting up Snowflake database objects..."
-	python -c "from src.config import get_session; \
-		session = get_session(); \
-		with open('snowflake/setup.sql', 'r') as f: \
-			for stmt in f.read().split(';'): \
-				if stmt.strip() and not stmt.strip().startswith('--'): \
-					try: \
-						session.sql(stmt).collect(); \
-					except Exception as e: \
-						print(f'Warning: {e}'); \
-		session.close()"
-	@echo "✓ Database objects created"
+	@echo "Please run the following SQL files in Snowflake:"
+	@echo "1. sql/setup.sql - Create database objects"
+	@echo "2. sql/create_task.sql - Create transformation task"
 
 ingest:
-	@echo "Loading RSS feed: $(RSS_URL)"
-	@python -c "from src.loader import load_rss_to_raw, execute_merge, enable_task, get_session; \
-		session = get_session(); \
-		result = load_rss_to_raw(session, '$(RSS_URL)'); \
-		print(f'Load result: {result}'); \
-		merge_result = execute_merge(session); \
-		print(f'Merge result: {merge_result}'); \
-		task_result = enable_task(session); \
-		print(f'Task result: {task_result}'); \
-		session.close()"
-	@echo "✓ RSS loaded and task scheduler started"
+	@echo "📡 Ingesting RSS feed to Snowflake..."
+	@poetry run python src/ingest.py
+	@echo "✅ Ingestion complete!"
 
-merge:
-	@echo "Running manual merge..."
-	@python -c "from src.loader import execute_merge, get_session; \
-		session = get_session(); \
-		result = execute_merge(session); \
-		print(result); \
-		session.close()"
+transform:
+	@echo "Running manual transformation..."
+	@echo "Transformation is handled by Snowflake TASK automatically"
+	@echo "To run manually, execute src/transform.sql in Snowflake"
 
-enable-task:
-	@echo "Enabling merge task..."
-	@python -c "from src.loader import enable_task, get_session; \
-		session = get_session(); \
-		result = enable_task(session); \
-		print(result); \
-		session.close()"
+init:
+	@echo "Initializing project..."
+	@poetry install
+	@poetry run pre-commit install
+	@echo "✓ Project initialized! Next steps:"
+	@echo "1. Copy .env.example to .env and fill in your credentials"
+	@echo "2. Run 'make setup-db' for database setup instructions"
+	@echo "3. Run 'make ingest' to test RSS ingestion"
 
 status:
-	@echo "=== Task Status ==="
-	@python -c "from src.loader import get_task_status, get_session; \
-		session = get_session(); \
-		df = get_task_status(session); \
-		print(df[['name', 'state', 'schedule']].to_string()); \
-		session.close()"
-	@echo "\n=== Data Status ==="
-	@python -c "from src.config import get_session; \
-		session = get_session(); \
-		counts = {}; \
-		for table in ['RAW.NOTE_RSS_RAW', 'CORE.BLOG_POSTS']: \
-			try: \
-				count = session.sql(f'SELECT COUNT(*) as cnt FROM {table}').collect()[0]['CNT']; \
-				counts[table] = count; \
-			except: \
-				counts[table] = 'N/A'; \
-		for table, count in counts.items(): \
-			print(f'{table}: {count} rows'); \
-		session.close()"
+	@echo "Checking project status..."
+	@poetry run python -c "from src.config import get_snowflake_session; session = get_snowflake_session(); print('✓ Snowflake connection successful'); result = session.sql('SELECT COUNT(*) as cnt FROM BLOG_POSTS').collect(); print(f'Total blog posts: {result[0].CNT}'); session.close()"
 
-ui:
+streamlit:
 	@echo "Starting Streamlit UI..."
-	streamlit run app/main.py --server.port 8501 --server.address localhost
+	@poetry run streamlit run app/streamlit_app.py --server.port 8501 --server.address localhost
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
@@ -97,9 +75,13 @@ clean:
 
 test:
 	@echo "Running tests..."
-	# pytest tests/ -v
+	@poetry run pytest tests/ -q
 
 lint:
 	@echo "Running linters..."
-	# ruff check src/
-	# black --check src/
+	@poetry run ruff check --fix .
+	@poetry run black .
+
+api:
+	@echo "Starting FastAPI server..."
+	@poetry run uvicorn api.main:app --reload --port 8000
