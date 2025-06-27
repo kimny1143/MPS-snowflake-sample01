@@ -33,15 +33,15 @@ LANGUAGE SQL
 AS
 $$
     WITH RECURSIVE chunks AS (
-        SELECT 
+        SELECT
             0 as chunk_index,
             SUBSTR(text, 1, chunk_size) as chunk_text,
             chunk_size - overlap as next_pos,
             LENGTH(text) as text_length
-        
+
         UNION ALL
-        
-        SELECT 
+
+        SELECT
             chunk_index + 1,
             SUBSTR(text, next_pos + 1, chunk_size),
             next_pos + chunk_size - overlap,
@@ -49,7 +49,7 @@ $$
         FROM chunks
         WHERE next_pos < text_length
     )
-    SELECT chunk_index, chunk_text 
+    SELECT chunk_index, chunk_text
     FROM chunks
     WHERE chunk_text IS NOT NULL AND LENGTH(chunk_text) > 50
 $$;
@@ -65,23 +65,23 @@ DECLARE
 BEGIN
     -- Clear existing chunks
     TRUNCATE TABLE STG.ARTICLE_CHUNKS;
-    
+
     -- Create chunks for all articles
     INSERT INTO STG.ARTICLE_CHUNKS (ARTICLE_ID, CHUNK_INDEX, CHUNK_TEXT, CHUNK_LENGTH)
-    SELECT 
+    SELECT
         bp.ID as ARTICLE_ID,
         c.chunk_index,
         c.chunk_text,
         LENGTH(c.chunk_text) as CHUNK_LENGTH
     FROM CORE.BLOG_POSTS bp,
     TABLE(STG.SPLIT_TEXT_TO_CHUNKS(
-        CONCAT(bp.TITLE, '\n\n', bp.BODY), 
+        CONCAT(bp.TITLE, '\n\n', bp.BODY),
         1000,  -- chunk size
         200    -- overlap
     )) c;
-    
+
     SELECT COUNT(*) INTO chunks_created FROM STG.ARTICLE_CHUNKS;
-    
+
     RETURN 'Created ' || chunks_created || ' chunks';
 END;
 $$;
@@ -93,28 +93,28 @@ LANGUAGE JAVASCRIPT
 AS
 $$
     if (!VEC1 || !VEC2 || VEC1.length !== VEC2.length) return null;
-    
+
     let dotProduct = 0;
     let norm1 = 0;
     let norm2 = 0;
-    
+
     for (let i = 0; i < VEC1.length; i++) {
         dotProduct += VEC1[i] * VEC2[i];
         norm1 += VEC1[i] * VEC1[i];
         norm2 += VEC2[i] * VEC2[i];
     }
-    
+
     norm1 = Math.sqrt(norm1);
     norm2 = Math.sqrt(norm2);
-    
+
     if (norm1 === 0 || norm2 === 0) return 0;
-    
+
     return dotProduct / (norm1 * norm2);
 $$;
 
 -- View for semantic search
 CREATE OR REPLACE VIEW STG.SEARCHABLE_ARTICLES AS
-SELECT 
+SELECT
     c.CHUNK_ID,
     c.ARTICLE_ID,
     c.CHUNK_INDEX,
